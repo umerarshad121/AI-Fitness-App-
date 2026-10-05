@@ -30,9 +30,13 @@ export default function AuthPage() {
       else if (mode === 'signup') { setMessage('Account created. Email verification complete karke sign in karein.'); showToast('Account created successfully.', 'success'); }
       else window.location.assign('/dashboard');
     } catch (caught) {
-      const error = caught instanceof Error && caught.message === 'AUTH_TIMEOUT'
-        ? 'Login server se response nahi aa raha. Internet/VPN check karke dobara try karein.'
-        : 'Network error. Internet connection check karke dobara try karein.';
+      console.error('Authentication request failed:', caught);
+      const detail = caught instanceof Error ? caught.message : String(caught);
+      const error = detail === 'AUTH_TIMEOUT'
+        ? 'Login server se response nahi aa raha (15 seconds timeout). Supabase configuration ya server check karein.'
+        : detail.includes('Missing Supabase')
+          ? 'Supabase configuration missing hai. Hosting environment mein NEXT_PUBLIC_SUPABASE_URL aur NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY add karein.'
+          : `Login failed: ${detail || 'Unknown authentication error'}`;
       setMessage(error); showToast(error, 'error');
     } finally { setLoading(false); }
   }
