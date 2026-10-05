@@ -16,16 +16,23 @@ export default function AuthPage() {
   async function submit(event: FormEvent) {
     event.preventDefault();
     setLoading(true); setMessage('');
-    const supabase = createClient();
     try {
-      const result = mode === 'signin'
-        ? await supabase.auth.signInWithPassword({ email, password })
-        : await supabase.auth.signUp({ email, password, options: { emailRedirectTo: `${window.location.origin}/auth/callback` } });
+      const supabase = createClient();
+      // A failed/blocked request must not leave the button stuck forever.
+      const authRequest = mode === 'signin'
+        ? supabase.auth.signInWithPassword({ email, password })
+        : supabase.auth.signUp({ email, password, options: { emailRedirectTo: `${window.location.origin}/auth/callback` } });
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('AUTH_TIMEOUT')), 15000)
+      );
+      const result = await Promise.race([authRequest, timeout]);
       if (result.error) { setMessage(result.error.message); showToast(result.error.message, 'error'); }
       else if (mode === 'signup') { setMessage('Account created. Email verification complete karke sign in karein.'); showToast('Account created successfully.', 'success'); }
       else window.location.assign('/dashboard');
-    } catch {
-      const error = 'Network error. Internet connection check karke dobara try karein.';
+    } catch (caught) {
+      const error = caught instanceof Error && caught.message === 'AUTH_TIMEOUT'
+        ? 'Login server se response nahi aa raha. Internet/VPN check karke dobara try karein.'
+        : 'Network error. Internet connection check karke dobara try karein.';
       setMessage(error); showToast(error, 'error');
     } finally { setLoading(false); }
   }
