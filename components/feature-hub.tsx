@@ -8,6 +8,7 @@ const tools: [string, string, string, string][] = [
   ['💧', 'Water', '/tracking?section=water', 'Hydration logs'],
   ['⌚', 'Exercise', '/watch', 'Watch + workouts'],
   ['⚖️', 'Weight', '/weight', 'Progress check-in'],
+  ['🥗', 'Nutrition', '/nutrition', 'Macros + micros'],
   ['📈', 'Progress', '/progress', '7-day insights'],
   ['🍽️', 'Recipes', '/planner', 'Save your meals'],
   ['🗓️', 'Meal planner', '/planner', 'Plan your day'],

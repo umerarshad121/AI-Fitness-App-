@@ -4,13 +4,16 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { createClient } from '../../lib/supabase/client';
 import { FeatureHub } from '../../components/feature-hub';
+import { NutritionPanel, type NutritionMeal, type NutritionTargets } from '../../components/nutrition-panel';
+import { resolveMacroTargets } from '../../lib/nutrition';
+import { daysAgoLocal } from '../../lib/dates';
 
-type Profile = { daily_calorie_target: number | null; weight_kg: number | null };
-type Meal = { food_name: string; meal_type: string; calories: number };
+type Meal = NutritionMeal & { meal_type: string };
 
 export default function DashboardPage() {
-  const [p, setP] = useState<Profile | null>(null);
   const [m, setM] = useState<Meal[]>([]);
+  const [weekMeals, setWeekMeals] = useState<NutritionMeal[]>([]);
+  const [targets, setTargets] = useState<NutritionTargets | null>(null);
   const [burned, setBurned] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -24,7 +27,6 @@ export default function DashboardPage() {
         setLoading(false);
         return;
       }
-      // meal_logs FK needs a profiles row — create defaults if missing.
       await s.from('profiles').upsert({
         id: user.id,
         daily_calorie_target: 2000,
@@ -34,16 +36,23 @@ export default function DashboardPage() {
         activity_level: 'moderate',
         goal: 'lose',
       }, { onConflict: 'id', ignoreDuplicates: true });
-      const d = new Date();
-      d.setHours(0, 0, 0, 0);
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const since = daysAgoLocal(6);
+
       const [{ data: profile, error: pe }, { data: meals, error: me }, exRes] = await Promise.all([
-        s.from('profiles').select('daily_calorie_target,weight_kg').eq('id', user.id).maybeSingle(),
-        s.from('meal_logs').select('food_name,meal_type,calories').eq('user_id', user.id).gte('logged_at', d.toISOString()),
+        s.from('profiles').select('daily_calorie_target,protein_target,carbs_target,fat_target,weight_kg,sex,age,height_cm,target_weight_kg,activity_level,goal').eq('id', user.id).maybeSingle(),
+        s.from('meal_logs').select('food_name,meal_type,calories,protein,carbs,fat,logged_at').eq('user_id', user.id).gte('logged_at', since.toISOString()),
         fetch('/api/exercises?days=1'),
       ]);
       if (pe || me) setError(pe?.message || me?.message || 'Unable to load data');
-      setP(profile);
-      setM((meals ?? []) as Meal[]);
+
+      const all = (meals ?? []) as Meal[];
+      setWeekMeals(all);
+      setM(all.filter(x => new Date(x.logged_at ?? 0) >= today));
+      setTargets(resolveMacroTargets(profile ?? {}));
+
       if (exRes.ok) {
         const exercises = await exRes.json();
         setBurned((exercises ?? []).reduce((n: number, x: { calories_burned: number }) => n + Number(x.calories_burned), 0));
@@ -54,7 +63,7 @@ export default function DashboardPage() {
 
   if (loading) return <main className="min-h-screen bg-slate-50 px-4 py-6 sm:p-6">Loading your diary...</main>;
 
-  const target = Number(p?.daily_calorie_target ?? 2000);
+  const target = targets?.calories ?? 2000;
   const consumed = m.reduce((n, x) => n + Number(x.calories), 0);
   const remaining = target + burned - consumed;
   const sections = ['breakfast', 'lunch', 'dinner', 'snack'];
@@ -68,6 +77,7 @@ export default function DashboardPage() {
             <h1 className="text-2xl font-bold sm:text-3xl">Today</h1>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            <Link href="/nutrition" className="rounded-lg border border-blue-600 bg-white px-4 py-2 text-center text-blue-600">Nutrition</Link>
             <Link href="/watch" className="rounded-lg border border-green-600 bg-white px-4 py-2 text-center text-green-700">Connect watch</Link>
             <Link href="/diary" className="rounded-lg border bg-white px-4 py-2 text-center">Search food</Link>
             <Link href="/profile" className="rounded-lg border bg-white px-4 py-2 text-center">Edit profile</Link>
@@ -111,6 +121,12 @@ export default function DashboardPage() {
           </div>
         </section>
 
+        {targets ? (
+          <div className="rounded-2xl border bg-white p-4 sm:p-6">
+            <NutritionPanel meals={m} weekMeals={weekMeals} targets={targets} compact />
+          </div>
+        ) : null}
+
         <FeatureHub />
 
         <div className="grid gap-4 md:grid-cols-2">
@@ -126,9 +142,11 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 {list.length ? list.map((x, i) => (
-                  <div key={i} className="mt-3 flex justify-between border-t pt-3 text-sm">
+                  <div key={i} className="mt-3 flex justify-between gap-3 border-t pt-3 text-sm">
                     <span>{x.food_name}</span>
-                    <span>{x.calories} kcal</span>
+                    <span className="shrink-0 text-slate-500">
+                      {x.calories} kcal · P{Math.round(Number(x.protein))} C{Math.round(Number(x.carbs))} F{Math.round(Number(x.fat))}
+                    </span>
                   </div>
                 )) : <p className="mt-3 text-sm text-slate-400">No food logged yet.</p>}
               </section>
@@ -138,6 +156,7 @@ export default function DashboardPage() {
 
         <div className="flex flex-col gap-2 sm:flex-row">
           <Link href="/scan" className="inline-block rounded-lg bg-blue-600 px-5 py-3 text-center font-semibold text-white">Scan a meal</Link>
+          <Link href="/nutrition" className="inline-block rounded-lg border px-5 py-3 text-center font-semibold">Nutrition detail</Link>
           <Link href="/progress" className="inline-block rounded-lg border px-5 py-3 text-center font-semibold">View progress</Link>
         </div>
       </div>
