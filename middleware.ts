@@ -16,7 +16,7 @@ export async function middleware(request: NextRequest) {
       },
     });
     const { data: { user } } = await supabase.auth.getUser();
-    const isProtectedRoute = request.nextUrl.pathname.startsWith('/dashboard') || request.nextUrl.pathname.startsWith('/profile') || request.nextUrl.pathname.startsWith('/diary') || request.nextUrl.pathname.startsWith('/watch') || request.nextUrl.pathname.startsWith('/tracking') || request.nextUrl.pathname.startsWith('/planner') || request.nextUrl.pathname.startsWith('/progress') || request.nextUrl.pathname.startsWith('/weight');
+    const isProtectedRoute = ['/dashboard', '/profile', '/diary', '/watch', '/tracking', '/planner', '/progress', '/weight', '/scan'].some(path => request.nextUrl.pathname.startsWith(path));
     if (!user && isProtectedRoute) return NextResponse.redirect(new URL('/auth', request.url));
   } catch {
     // Supabase outages/configuration errors should not break the public landing page.
@@ -25,4 +25,4 @@ export async function middleware(request: NextRequest) {
   return response;
 }
 
-export const config = { matcher: ['/dashboard/:path*', '/profile/:path*', '/diary/:path*', '/watch/:path*', '/tracking/:path*', '/planner/:path*', '/progress/:path*', '/weight/:path*'] };
+export const config = { matcher: ['/dashboard/:path*', '/profile/:path*', '/diary/:path*', '/watch/:path*', '/tracking/:path*', '/planner/:path*', '/progress/:path*', '/weight/:path*', '/scan/:path*'] };

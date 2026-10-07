@@ -1,8 +1,21 @@
 import { NextResponse } from 'next/server';
 
+export const maxDuration = 60;
+
+function coerceNumber(value: unknown): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
 export async function POST(req: Request) {
   try {
     const { imageBase64 } = await req.json();
+    if (typeof imageBase64 !== 'string' || !imageBase64.startsWith('data:image/')) {
+      return NextResponse.json({ error: 'Invalid image upload. Please choose a photo and try again.' }, { status: 400 });
+    }
+    if (imageBase64.length > 6_000_000) {
+      return NextResponse.json({ error: 'Image is too large. Try a smaller photo.' }, { status: 413 });
+    }
 
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -41,7 +54,13 @@ export async function POST(req: Request) {
     if (start === -1 || end === -1 || end <= start) throw new Error('AI returned an invalid nutrition response.');
     const result = JSON.parse(normalized.slice(start, end + 1));
     if (result.is_food === false) return NextResponse.json({ error: 'No food detected. Please capture a clear food image.' }, { status: 422 });
-    return NextResponse.json(result);
+    return NextResponse.json({
+      food_name: String(result.food_name ?? 'Meal'),
+      calories: coerceNumber(result.calories),
+      protein: coerceNumber(result.protein),
+      carbs: coerceNumber(result.carbs),
+      fat: coerceNumber(result.fat),
+    });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to analyze image' }, { status: 500 });
   }

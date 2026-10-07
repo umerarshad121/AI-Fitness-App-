@@ -19,5 +19,5 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     setToasts(current => [...current, { id, message, type }]);
     window.setTimeout(() => setToasts(current => current.filter(toast => toast.id !== id)), 4000);
   }, []);
-  return <ToastContext.Provider value={{ showToast }}>{children}<div className="fixed right-4 top-4 z-50 flex w-[min(360px,calc(100vw-2rem))] flex-col gap-2">{toasts.map(toast => <div key={toast.id} role="status" className={`rounded-xl border px-4 py-3 text-sm font-medium shadow-lg ${toast.type === 'success' ? 'border-green-200 bg-green-50 text-green-800' : toast.type === 'error' ? 'border-red-200 bg-red-50 text-red-800' : 'border-blue-200 bg-blue-50 text-blue-800'}`}>{toast.message}</div>)}</div></ToastContext.Provider>;
+  return <ToastContext.Provider value={{ showToast }}>{children}<div className="fixed left-4 right-4 top-4 z-50 flex flex-col gap-2 sm:left-auto sm:w-[min(360px,calc(100vw-2rem))]">{toasts.map(toast => <div key={toast.id} role="status" className={`rounded-xl border px-4 py-3 text-sm font-medium shadow-lg ${toast.type === 'success' ? 'border-green-200 bg-green-50 text-green-800' : toast.type === 'error' ? 'border-red-200 bg-red-50 text-red-800' : 'border-blue-200 bg-blue-50 text-blue-800'}`}>{toast.message}</div>)}</div></ToastContext.Provider>;
 }
