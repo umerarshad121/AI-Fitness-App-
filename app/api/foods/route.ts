@@ -14,6 +14,9 @@ export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+  const { ensureProfile } = await import('../../../lib/ensure-profile');
+  const profile = await ensureProfile(supabase, user.id);
+  if (!profile.ok) return NextResponse.json({ error: `Profile setup failed: ${profile.error}` }, { status: 400 });
   const body = await request.json();
   const { data, error } = await supabase.from('custom_foods').insert({ user_id: user.id, name: body.name, calories: body.calories, protein: body.protein ?? 0, carbs: body.carbs ?? 0, fat: body.fat ?? 0, serving_size: body.serving_size ?? '100g' }).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });

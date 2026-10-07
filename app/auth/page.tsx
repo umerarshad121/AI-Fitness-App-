@@ -27,8 +27,26 @@ export default function AuthPage() {
       );
       const result = await Promise.race([authRequest, timeout]);
       if (result.error) { setMessage(result.error.message); showToast(result.error.message, 'error'); }
-      else if (mode === 'signup') { setMessage('Account created. Email verification complete karke sign in karein.'); showToast('Account created successfully.', 'success'); }
-      else window.location.assign('/dashboard');
+      else {
+        const userId = result.data.user?.id;
+        if (userId) {
+          await supabase.from('profiles').upsert({
+            id: userId,
+            daily_calorie_target: 2000,
+            protein_target: 150,
+            carbs_target: 200,
+            fat_target: 65,
+            activity_level: 'moderate',
+            goal: 'lose',
+          }, { onConflict: 'id' });
+        }
+        if (mode === 'signup') {
+          setMessage('Account created. Email verification complete karke sign in karein.');
+          showToast('Account created successfully.', 'success');
+        } else {
+          window.location.assign('/dashboard');
+        }
+      }
     } catch (caught) {
       console.error('Authentication request failed:', caught);
       const detail = caught instanceof Error ? caught.message : String(caught);

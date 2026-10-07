@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
+import { ensureProfile } from '../../../lib/ensure-profile';
 import { createClient } from '../../../lib/supabase/server';
 
 export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+  const profile = await ensureProfile(supabase, user.id);
+  if (!profile.ok) return NextResponse.json({ error: `Profile setup failed: ${profile.error}` }, { status: 400 });
   const body = await request.json();
   const { data, error } = await supabase.from('exercises').insert({
     user_id: user.id,

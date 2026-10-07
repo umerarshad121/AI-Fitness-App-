@@ -24,6 +24,16 @@ export default function DashboardPage() {
         setLoading(false);
         return;
       }
+      // meal_logs FK needs a profiles row — create defaults if missing.
+      await s.from('profiles').upsert({
+        id: user.id,
+        daily_calorie_target: 2000,
+        protein_target: 150,
+        carbs_target: 200,
+        fat_target: 65,
+        activity_level: 'moderate',
+        goal: 'lose',
+      }, { onConflict: 'id', ignoreDuplicates: true });
       const d = new Date();
       d.setHours(0, 0, 0, 0);
       const [{ data: profile, error: pe }, { data: meals, error: me }, exRes] = await Promise.all([
